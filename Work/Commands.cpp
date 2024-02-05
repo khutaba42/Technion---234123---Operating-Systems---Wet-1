@@ -202,7 +202,7 @@ ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
 {
   if (m_operands.size() > 2) // more than the command name and the only argument
   {
-    std::cerr << "smash error: cd: too many arguments" << '\n';
+    std::cerr << "smash error: cd: too many arguments\n";
   }
   // has one argument exactly (no arguments will not be tested)
 }
@@ -215,7 +215,7 @@ void ChangeDirCommand::execute()
   {
     if (m_path_history.size() == 0)
     {
-      std::cerr << "smash error: cd: OLDPWD not set" << '\n';
+      std::cerr << "smash error: cd: OLDPWD not set\n";
     }
     else
     {
@@ -252,38 +252,38 @@ void ChangeDirCommand::execute()
 // ? JobsList class
 void JobsList::addJob(Command *cmd, bool isStopped = false)
 {
-  m_jobs.push_back(JobEntry(cmd->getCMDline(),getNextID(), isStopped));
+  m_jobsList.push_back(JobEntry(cmd->getCMDline(), getNextID(), isStopped));
 }
 
 void JobsList::printJobsList()
 {
-  for(const JobEntry& job : m_jobs)
+  for (const JobEntry &job : m_jobsList)
   {
-    std::cout << "[" << job.m_id << "] " << job.m_cmd_line << "\n"; 
+    std::cout << "[" << job.m_id << "] " << job.m_cmd_line << "\n";
   }
 }
 
 void JobsList::killAllJobs()
 {
-  m_jobs.clear();
+  m_jobsList.clear();
 }
 
 void JobsList::removeFinishedJobs()
 {
-  for(std::list<JobEntry>::iterator it = m_jobs.begin(); it < m_jobs.end(); ++it)
+  for (std::list<JobEntry>::iterator it = m_jobsList.begin(); it < m_jobsList.end(); ++it)
   {
-    if((*it).m_isStopped)
+    if ((*it).m_isStopped)
     {
-      m_jobs.erase(it);
+      m_jobsList.erase(it);
     }
   }
 }
 
 JobsList::JobEntry *JobsList::getJobById(int jobId)
-{ 
-  for(const JobEntry& job : m_jobs)
+{
+  for (const JobEntry &job : m_jobsList)
   {
-    if(job.m_id == jobId)
+    if (job.m_id == jobId)
     {
       return job;
     }
@@ -293,46 +293,119 @@ JobsList::JobEntry *JobsList::getJobById(int jobId)
 
 void JobsList::removeJobById(int jobId)
 {
-  for(std::list<JobEntry>::iterator it = m_jobs.begin(); it < m_jobs.end(); ++it)
+  for (std::list<JobEntry>::iterator it = m_jobsList.begin(); it < m_jobsList.end(); ++it)
   {
-    if((*it).m_id == jobId)
+    if ((*it).m_id == jobId)
     {
-      m_jobs.erase(it);
+      m_jobsList.erase(it);
     }
   }
 }
 
 JobsList::JobEntry *JobsList::getLastJob()
 {
-  return m_jobs.back();
+  return m_jobsList.back();
 }
 
 JobsList::JobEntry *JobsList::getLastStoppedJob()
 {
-  for(std::list<JobEntry>::iterator it = m_jobs.end(); it < m_jobs.begin(); --it)
+  for (std::list<JobEntry>::iterator it = m_jobsList.end(); it < m_jobsList.begin(); --it)
   {
-    if((*id).isStopped)
+    if ((*id).isStopped)
     {
       // TODO: what to return here??
     }
   }
   // TODO: what to return here??
-
 }
 
 unsigned long JobsList::getNextID() const
 {
   // TODO: should i check for unfinished jobs?
-  return (m_jobs.size() == 0) ? (1) : (m_jobs.back().m_id + 1);
+  return (m_jobsList.size() == 0) ? (1) : (m_jobsList.back().m_id + 1);
+}
+
+bool JobsList::isEmpty() const
+{
+  return m_jobsList.empty();
 }
 
 // ? JobsCommand
+JobsCommand::JobsCommand(const char *cmd_line, const JobsList &jobs) // ! I changed it from * to &
+    : BuiltInCommand(cmd_line), m_jobs(jobs) 
+{
+}
+
+void JobsCommand::execute()
+{
+  m_jobs.printJobsList();
+}
 
 // ? ForegroundCommand
+ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList &jobs) // ! I changed it from * to &
+    : BuiltInCommand(cmd_line), m_jobs(jobs)
+{
+  if(numOfArguments() > 1 || std::stoi(m_operands.back()) == EOF)
+  {
+    std::cerr << "smash error: fg: invalid arguments\n";
+  }
+  else if(numOfArguments() == 0 && m_jobs.isEmpty())
+  {
+    std::cerr << "smash error: fg: jobs list is empty\n";
+  }
+}
+
+void ForegroundCommand::execute()
+{
+  int id = std::stoi(m_operands.back());
+  for(JobsList::JobEntry& job : m_jobs.m_jobsList)
+  {
+    if(job.m_id == id)
+    {
+      // TODO: bring to fg
+      m_jobs.removeJobById(id);
+      return;
+    }
+  }
+  std::cerr << "smash error: fg: job-id " << id << " does not exist\n"; // TODO: does it need to be like this <id>
+}
 
 // ? QuitCommand
+QuitCommand::QuitCommand(const char *cmd_line, JobsList &jobs)
+    : BuiltInCommand(cmd_line), m_jobs(jobs)
+{
+}
+
+void QuitCommand::execute()
+{
+  if(numOfArguments() > 0)
+  {
+    std::list<std::string>::iterator firstArgument = m_operands.begin();
+    firstArgument++;
+    if(*firstArgument == "kill")
+    {
+      std::cout << "smash: sending SIGKILL signal to " << m_jobs.size() << "jobs:\n";
+      for(JobsList::JobEntry& job : m_jobs.m_jobsList)
+      {
+        std::cout << "PID:" /*TODO: change PID to print the pid of the job*/ << job.m_cmd_line;
+      }
+      m_jobs.killAllJobs();
+    }
+  }
+
+  // TODO: exit the smash
+}
 
 // ? KillCommand
+KillCommand::KillCommand(const char *cmd_line, JobsList &jobs)
+{
+
+}
+
+void KillCommand::execute()
+{
+
+}
 
 /*
  * External Commands

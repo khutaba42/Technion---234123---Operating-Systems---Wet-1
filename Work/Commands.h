@@ -150,7 +150,7 @@ public:
     JobEntry(const string& cmdLine, unsigned long id, bool isStopped) : m_cmd_line(cmdLine), m_id(id), m_isStopped(isStopped){};
   };
   // *- data members
-  std::list<JobEntry> m_jobs;
+  std::list<JobEntry> m_jobsList; // !!!!! I think we should make better functions 
 
 public:
   JobsList(){};
@@ -165,6 +165,7 @@ public:
   JobEntry *getLastStoppedJob();
   // *- add extra methods or modify existing ones as needed
   unsigned long getNextID() const;
+  bool isEmpty() const;
 };
 
 /** Command number 5:
@@ -173,8 +174,9 @@ public:
 class JobsCommand : public BuiltInCommand
 {
   // *- data members
+  JobsList m_jobs;
 public:
-  JobsCommand(const char *cmd_line, JobsList *jobs);
+  JobsCommand(const char *cmd_line, const JobsList &jobs);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -185,8 +187,9 @@ public:
 class ForegroundCommand : public BuiltInCommand
 {
   // *- data members
+  JobsList m_jobs;
 public:
-  ForegroundCommand(const char *cmd_line, JobsList *jobs);
+  ForegroundCommand(const char *cmd_line, JobsList &jobs);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -197,8 +200,9 @@ public:
 class QuitCommand : public BuiltInCommand
 {
   // *- data members
+  JobsList m_jobs;
 public:
-  QuitCommand(const char *cmd_line, JobsList *jobs);
+  QuitCommand(const char *cmd_line, JobsList &jobs);
   virtual ~QuitCommand() {}
   void execute() override;
 };
@@ -209,8 +213,9 @@ public:
 class KillCommand : public BuiltInCommand
 {
   // *- data members
+  int 
 public:
-  KillCommand(const char *cmd_line, JobsList *jobs);
+  KillCommand(const char *cmd_line, JobsList &jobs);
   virtual ~KillCommand() {}
   void execute() override;
 };
