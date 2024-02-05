@@ -161,8 +161,8 @@ public:
   void removeFinishedJobs();
   JobEntry *getJobById(int jobId);
   void removeJobById(int jobId);
-  JobEntry *getLastJob(int *lastJobId);
-  JobEntry *getLastStoppedJob(int *jobId);
+  JobEntry *getLastJob();
+  JobEntry *getLastStoppedJob();
   // *- add extra methods or modify existing ones as needed
   unsigned long getNextID() const;
 };

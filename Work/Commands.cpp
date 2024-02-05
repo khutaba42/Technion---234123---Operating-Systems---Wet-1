@@ -254,26 +254,70 @@ void JobsList::addJob(Command *cmd, bool isStopped = false)
 {
   m_jobs.push_back(JobEntry(cmd->getCMDline(),getNextID(), isStopped));
 }
+
 void JobsList::printJobsList()
 {
+  for(const JobEntry& job : m_jobs)
+  {
+    std::cout << "[" << job.m_id << "] " << job.m_cmd_line << "\n"; 
+  }
 }
+
 void JobsList::killAllJobs()
 {
+  m_jobs.clear();
 }
+
 void JobsList::removeFinishedJobs()
 {
+  for(std::list<JobEntry>::iterator it = m_jobs.begin(); it < m_jobs.end(); ++it)
+  {
+    if((*it).m_isStopped)
+    {
+      m_jobs.erase(it);
+    }
+  }
 }
+
 JobsList::JobEntry *JobsList::getJobById(int jobId)
-{
+{ 
+  for(const JobEntry& job : m_jobs)
+  {
+    if(job.m_id == jobId)
+    {
+      return job;
+    }
+  }
+  // TODO: what to return here??
 }
+
 void JobsList::removeJobById(int jobId)
 {
+  for(std::list<JobEntry>::iterator it = m_jobs.begin(); it < m_jobs.end(); ++it)
+  {
+    if((*it).m_id == jobId)
+    {
+      m_jobs.erase(it);
+    }
+  }
 }
-JobsList::JobEntry *JobsList::getLastJob(int *lastJobId)
+
+JobsList::JobEntry *JobsList::getLastJob()
 {
+  return m_jobs.back();
 }
-JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
+
+JobsList::JobEntry *JobsList::getLastStoppedJob()
 {
+  for(std::list<JobEntry>::iterator it = m_jobs.end(); it < m_jobs.begin(); --it)
+  {
+    if((*id).isStopped)
+    {
+      // TODO: what to return here??
+    }
+  }
+  // TODO: what to return here??
+
 }
 
 unsigned long JobsList::getNextID() const
