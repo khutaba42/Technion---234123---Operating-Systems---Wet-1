@@ -145,12 +145,13 @@ public:
     // *- data members
     //TODO check if we should prettify the command
     std::string m_cmd_line;
+    pid_t m_command_pid;
     unsigned long m_id;
     bool m_isStopped;
-    JobEntry(const string& cmdLine, unsigned long id, bool isStopped) : m_cmd_line(cmdLine), m_id(id), m_isStopped(isStopped){};
+    JobEntry(const std::string& cmdLine, unsigned long id, bool isStopped) : m_cmd_line(cmdLine), m_id(id), m_isStopped(isStopped){};
   };
   // *- data members
-  std::list<JobEntry> m_jobsList; // !!!!! I think we should make better functions 
+  std::list<JobEntry> m_jobsList; 
 
 public:
   JobsList(){};

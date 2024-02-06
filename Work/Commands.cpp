@@ -270,7 +270,7 @@ void JobsList::killAllJobs()
 
 void JobsList::removeFinishedJobs()
 {
-  for (std::list<JobEntry>::iterator it = m_jobsList.begin(); it < m_jobsList.end(); ++it)
+  for (std::list<JobEntry>::iterator it = m_jobsList.begin(); it != m_jobsList.end(); ++it)
   {
     if ((*it).m_isStopped)
     {
@@ -281,14 +281,15 @@ void JobsList::removeFinishedJobs()
 
 JobsList::JobEntry *JobsList::getJobById(int jobId)
 {
-  for (const JobEntry &job : m_jobsList)
+  // for (auto JobEntry)
+  for (JobEntry &job : m_jobsList)
   {
     if (job.m_id == jobId)
     {
-      return job;
+      return &job;
     }
   }
-  // TODO: what to return here??
+  return nullptr;
 }
 
 void JobsList::removeJobById(int jobId)
@@ -304,14 +305,14 @@ void JobsList::removeJobById(int jobId)
 
 JobsList::JobEntry *JobsList::getLastJob()
 {
-  return m_jobsList.back();
+  return &m_jobsList.back();
 }
 
 JobsList::JobEntry *JobsList::getLastStoppedJob()
 {
-  for (std::list<JobEntry>::iterator it = m_jobsList.end(); it < m_jobsList.begin(); --it)
+  for (auto it = m_jobsList.rend(); it < m_jobsList.rbegin(); --it)
   {
-    if ((*id).isStopped)
+    if ((*it).m_isStopped)
     {
       // TODO: what to return here??
     }
