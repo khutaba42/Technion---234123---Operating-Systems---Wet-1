@@ -83,6 +83,12 @@ void _removeBackgroundSign(char *cmd_line)
   cmd_line[str.find_last_not_of(WHITESPACE, idx) + 1] = 0;
 }
 
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-//
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-//
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-//
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-//
+//-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-*-//
+
 // * implementation for classes in Commands.h
 
 // ? Command
@@ -109,6 +115,116 @@ unsigned int Command::numOfArguments() const
   // TODO : m_operands.size() == 0 ? what
   return m_operands.size() - 1;
 }
+
+enum class CommandType
+{
+  BuiltIn,
+  IO_Append,
+  IO_Override,
+  Pipe,
+  Pipe_err,
+  TimeOut,
+  External
+};
+
+class CommandBuilder
+{
+
+  std::string m_name;
+  std::vector<std::string> m_args;
+  bool m_isBackgroundCommand;
+  CommandType m_type;
+
+public:
+  CommandBuilder(){};
+  ~CommandBuilder(){};
+
+  void addOperand(const std::string &op)
+  {
+    if (op.compare("chprompt") == 0)
+    {
+    }
+    else if (op.compare("showpid") == 0)
+    {
+    }
+    else if (op.compare("pwd") == 0)
+    {
+    }
+    else if (op.compare("cd") == 0)
+    {
+    }
+    else if (op.compare("jobs") == 0)
+    {
+    }
+    else if (op.compare("fg") == 0)
+    {
+    }
+    else if (op.compare("quit") == 0)
+    {
+    }
+    else if (op.compare("kill") == 0)
+    {
+    }
+    else if (op.compare("chmod") == 0)
+    {
+    }
+    else
+    {
+    }
+  }
+
+  Command *build()
+  {
+
+    return nullptr;
+  }
+
+private:
+  CommandBuilder &addBackground();
+};
+
+class CommandParser
+{
+
+public:
+  CommandParser(){};
+  ~CommandParser(){};
+  Command *parse(const std::string &cmd_line)
+  {
+    std::stringstream ss(cmd_line);
+    CommandBuilder cb;
+    bool isBackground = _isBackgroundCommand(cmd_line.c_str());
+
+    for (std::string tmp; ss >> tmp;)
+    {
+    }
+  }
+
+  CommandType getType(const std::string &cmd_line) const
+  {
+    std::stringstream ss(cmd_line);
+    for (std::string tmp; ss >> tmp;)
+    {
+      if (tmp == ">")
+      {
+        return CommandType::IO_Override;
+      }
+      else if (tmp == ">>")
+      {
+        return CommandType::IO_Append;
+      }
+      else if (tmp == "|")
+      {
+        return CommandType::Pipe;
+      }
+      else if (tmp == "|&")
+      {
+        return CommandType::Pipe_err;
+      }
+      else
+    }
+  }
+};
 
 // ? BuiltInCommand
 
@@ -161,8 +277,11 @@ ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
 
 void ChangePromptCommand::execute()
 {
+  // if the command has only its name, then return back the default prompt
+  //    otherwise,
   SmallShell::getInstance().setPrompt(
       (m_operands.size() == 1) ? SmallShell::DEFAULT_PROMPT : m_operands.front());
+  // ! Not front, front is the command name, the next is the first arg
 }
 
 // ? ShowPidCommand
@@ -332,8 +451,8 @@ bool JobsList::isEmpty() const
 }
 
 // ? JobsCommand
-JobsCommand::JobsCommand(const char *cmd_line, const JobsList &jobs) // ! I changed it from * to &
-    : BuiltInCommand(cmd_line), m_jobs(jobs) 
+JobsCommand::JobsCommand(const char *cmd_line, const JobsList &jobs)
+    : BuiltInCommand(cmd_line), m_jobs(jobs)
 {
 }
 
@@ -343,14 +462,22 @@ void JobsCommand::execute()
 }
 
 // ? ForegroundCommand
-ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList &jobs) // ! I changed it from * to &
+ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList &jobs)
     : BuiltInCommand(cmd_line), m_jobs(jobs)
 {
-  if(numOfArguments() > 1 || std::stoi(m_operands.back()) == EOF)
+  if (numOfArguments() > 1)
   {
     std::cerr << "smash error: fg: invalid arguments\n";
   }
-  else if(numOfArguments() == 0 && m_jobs.isEmpty())
+  try
+  {
+    m_jobID = std::stoi(m_operands.back());
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "smash error: fg: invalid arguments\n";
+  }
+  else if (numOfArguments() == 0 && m_jobs.isEmpty())
   {
     std::cerr << "smash error: fg: jobs list is empty\n";
   }
@@ -358,17 +485,16 @@ ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList &jobs) // ! 
 
 void ForegroundCommand::execute()
 {
-  int id = std::stoi(m_operands.back());
-  for(JobsList::JobEntry& job : m_jobs.m_jobsList)
+  for (JobsList::JobEntry &job : m_jobs.m_jobsList)
   {
-    if(job.m_id == id)
+    if (job.m_id == m_jobID)
     {
       // TODO: bring to fg
-      m_jobs.removeJobById(id);
+      m_jobs.removeJobById(m_jobID);
       return;
     }
   }
-  std::cerr << "smash error: fg: job-id " << id << " does not exist\n"; // TODO: does it need to be like this <id>
+  std::cerr << "smash error: fg: job-id " << m_jobID << " does not exist\n";
 }
 
 // ? QuitCommand
@@ -379,14 +505,14 @@ QuitCommand::QuitCommand(const char *cmd_line, JobsList &jobs)
 
 void QuitCommand::execute()
 {
-  if(numOfArguments() > 0)
+  if (numOfArguments() > 0)
   {
-    std::list<std::string>::iterator firstArgument = m_operands.begin();
+    auto firstArgument = m_operands.begin();
     firstArgument++;
-    if(*firstArgument == "kill")
+    if (*firstArgument == "kill")
     {
-      std::cout << "smash: sending SIGKILL signal to " << m_jobs.size() << "jobs:\n";
-      for(JobsList::JobEntry& job : m_jobs.m_jobsList)
+      std::cout << "smash: sending SIGKILL signal to " << m_jobs.m_jobsList.size() << "jobs:\n";
+      for (JobsList::JobEntry &job : m_jobs.m_jobsList)
       {
         std::cout << "PID:" /*TODO: change PID to print the pid of the job*/ << job.m_cmd_line;
       }
@@ -400,12 +526,10 @@ void QuitCommand::execute()
 // ? KillCommand
 KillCommand::KillCommand(const char *cmd_line, JobsList &jobs)
 {
-
 }
 
 void KillCommand::execute()
 {
-
 }
 
 /*
@@ -436,15 +560,54 @@ SmallShell::~SmallShell()
   // TODO: add your implementation
 }
 
+std::map<std::string, Command *> = {
+    {"",
+     nullptr}};
 /**
  * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
  */
 Command *SmallShell::CreateCommand(const char *cmd_line)
 {
+  std::string cmd_s = _trim(string(cmd_line));
+  std::string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
+  // if a WHITESPACE string was given, then return an "empty" command
+  if (firstWord.compare("") == 0)
+  {
+    return nullptr;
+  }
+  else if (firstWord.compare("chprompt") == 0)
+  {
+  }
+  else if (firstWord.compare("showpid") == 0)
+  {
+  }
+  else if (firstWord.compare("pwd") == 0)
+  {
+  }
+  else if (firstWord.compare("cd") == 0)
+  {
+  }
+  else if (firstWord.compare("jobs") == 0)
+  {
+  }
+  else if (firstWord.compare("fg") == 0)
+  {
+  }
+  else if (firstWord.compare("quit") == 0)
+  {
+  }
+  else if (firstWord.compare("kill") == 0)
+  {
+  }
+  else if (firstWord.compare("chmod") == 0)
+  {
+  }
+  else
+  {
+  }
+
   // For example:
   /*
-    string cmd_s = _trim(string(cmd_line));
-    string firstWord = cmd_s.substr(0, cmd_s.find_first_of(" \n"));
 
     if (firstWord.compare("pwd") == 0) {
       return new GetCurrDirCommand(cmd_line);

@@ -1,9 +1,9 @@
 #ifndef SMASH_COMMAND_H_
 #define SMASH_COMMAND_H_
 
-#include <vector>
-#include <map>  // TODO piazza: for what?
-#include <list> // for JobsList
+#include <vector> // for JobsList
+#include <map>    // TODO piazza: for what?
+#include <list>   // for ??
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
@@ -18,7 +18,7 @@ protected:
     BackGround
   };
   // *- data members
-  std::list<std::string> m_operands;
+  std::vector<std::string> m_operands; // std::vector would be better than std::list here
   std::string m_cmd_line;
   RunType m_run_mode;
 
@@ -32,6 +32,10 @@ public:
   RunType getRunType() const;
   const std::string &getCMDline() const;
   unsigned int numOfArguments() const;
+
+  // ! We have to have the implementation here, because its templated.
+  template <unsigned int N> // getArg<0> returns the name of the command, the others give the args in order
+  const std::string &getArg() const { return m_operands[N]; }
 };
 
 class BuiltInCommand : public Command
@@ -143,15 +147,15 @@ public:
   {
   public:
     // *- data members
-    //TODO check if we should prettify the command
+    // TODO check if we should prettify the command
     std::string m_cmd_line;
     pid_t m_command_pid;
     unsigned long m_id;
     bool m_isStopped;
-    JobEntry(const std::string& cmdLine, unsigned long id, bool isStopped) : m_cmd_line(cmdLine), m_id(id), m_isStopped(isStopped){};
+    JobEntry(const std::string &cmdLine, unsigned long id, bool isStopped) : m_cmd_line(cmdLine), m_id(id), m_isStopped(isStopped){};
   };
   // *- data members
-  std::list<JobEntry> m_jobsList; 
+  std::list<JobEntry> m_jobsList;
 
 public:
   JobsList(){};
@@ -176,6 +180,7 @@ class JobsCommand : public BuiltInCommand
 {
   // *- data members
   JobsList m_jobs;
+
 public:
   JobsCommand(const char *cmd_line, const JobsList &jobs);
   virtual ~JobsCommand() {}
@@ -189,6 +194,7 @@ class ForegroundCommand : public BuiltInCommand
 {
   // *- data members
   JobsList m_jobs;
+  int m_jobID;
 public:
   ForegroundCommand(const char *cmd_line, JobsList &jobs);
   virtual ~ForegroundCommand() {}
@@ -202,6 +208,7 @@ class QuitCommand : public BuiltInCommand
 {
   // *- data members
   JobsList m_jobs;
+
 public:
   QuitCommand(const char *cmd_line, JobsList &jobs);
   virtual ~QuitCommand() {}
@@ -214,9 +221,7 @@ public:
 class KillCommand : public BuiltInCommand
 {
   // *- data members
-  int 
-public:
-  KillCommand(const char *cmd_line, JobsList &jobs);
+  int public : KillCommand(const char *cmd_line, JobsList &jobs);
   virtual ~KillCommand() {}
   void execute() override;
 };
