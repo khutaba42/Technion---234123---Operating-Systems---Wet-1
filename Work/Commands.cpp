@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
-#include <sys/wait.h>
+// #include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
 
@@ -91,47 +91,16 @@ void _removeBackgroundSign(char *cmd_line)
 
 // * implementation for classes in Commands.h
 
-// ? Command
-
-Command::Command(const char *cmd_line)
-    : m_operands(),
-      m_cmd_line(cmd_line),
-      m_run_mode(_isBackgroundCommand(cmd_line) ? (RunType::BackGround) : (RunType::ForeGround))
-{
-  std::stringstream ss(m_cmd_line);
-  for (std::string temp_str; ss >> temp_str;)
-  {
-    m_operands.push_back(temp_str);
-  }
-
-  if (m_operands.size() == 0)
-  {
-    // TODO: what to do in case of an empty command (all spaces)
-  }
-}
-
-unsigned int Command::numOfArguments() const
-{
-  // TODO : m_operands.size() == 0 ? what
-  return m_operands.size() - 1;
-}
-
-enum class CommandType
-{
-  BuiltIn,
-  IO_Append,
-  IO_Override,
-  Pipe,
-  Pipe_err,
-  TimeOut,
-  External
-};
-
 class CommandBuilder
 {
-
   std::string m_name;
-  std::vector<std::string> m_args;
+  std::vector<std::string> m_operands;
+  std::vector<std::string> m_args1;
+  int m_flag; // TODO: better name?
+  int m_numOfOperands;
+
+  std::vector<std::string> m_args2;
+
   bool m_isBackgroundCommand;
   CommandType m_type;
 
@@ -141,11 +110,148 @@ public:
 
   void addOperand(const std::string &op)
   {
+    m_operands.push_back(op);
+    if (m_type == CommandType::BuiltIn || m_type == CommandType::TimeOut)
+    {
+      if (m_numOfOperands == 0)
+      {
+        m_name = op;
+      }
+      else
+      {
+        m_args1.push_back(op);
+      }
+    }
+    else if (m_type == CommandType::Pipe || m_type == CommandType::Pipe_err ||
+             m_type == CommandType::IO_Append || m_type == CommandType::IO_Override)
+    {
+      if (op == "|" || op == "|&" || op == ">" || op == ">>")
+      {
+        m_flag = 1;
+      }
+      if (m_flag == 0)
+      {
+        m_args1.push_back(op);
+      }
+      else if (m_flag == 1)
+      {
+        m_args2.push_back(op);
+      }
+    }
+    else if (m_type == CommandType::External)
+    {
+      if (m_numOfOperands == 0)
+      {
+        m_name = op;
+      }
+      else
+      {
+        m_args1.push_back(op);
+      }
+    }
+    m_numOfOperands++;
+  }
+
+  Command *build()
+  {
+  }
+
+  void setBackground(bool isBackground)
+  {
+    m_isBackgroundCommand = isBackground;
+  }
+
+  void setType(CommandType type)
+  {
+    m_type = type;
+  }
+};
+
+class CommandParser
+{
+
+public:
+  CommandParser(){};
+  ~CommandParser(){};
+  Command *parse(const std::string &cmd_line)
+  {
+    std::stringstream ss(cmd_line);
+    CommandBuilder cb;
+    cb.setBackground(_isBackgroundCommand(cmd_line.c_str()));
+    cb.setType(getType(cmd_line));
+
+    for (std::string tmp; ss >> tmp;)
+    {
+      cb.addOperand(tmp);
+    }
+
+    return cb.build();
+  }
+
+  CommandType getType(const std::string &cmd_line) const
+  {
+    std::stringstream ss(cmd_line);
+    for (std::string tmp; ss >> tmp;)
+    {
+      if (tmp == ">")
+      {
+        return CommandType::IO_Override;
+      }
+      else if (tmp == ">>")
+      {
+        return CommandType::IO_Append;
+      }
+      else if (tmp == "|")
+      {
+        return CommandType::Pipe;
+      }
+      else if (tmp == "|&")
+      {
+        return CommandType::Pipe_err;
+      }
+      else if (tmp == "timeout")
+      {
+        return CommandType::TimeOut;
+      }
+      else if (tmp == "chprompt" || tmp == "showpid" || tmp == "pwd" ||
+               tmp == "cd" || tmp == "jobs" || tmp == "fg" || tmp == "quit" || tmp == "kill" || tmp == "chmod")
+      {
+        return CommandType::BuiltIn;
+      }
+    }
+    return CommandType::External;
+  }
+};
+
+// ? Command
+
+Command::Command(const std::string name, std::vector<std::string> operands, CommandType type, bool isBackground)
+    : m_name(name), m_operands(operands), m_type(type)
+{
+  m_run_mode = (isBackground == true) ? RunType::BackGround : RunType::ForeGround;
+}
+
+const std::string &Command::getCMDline() const
+{
+  std::string cmdLine;
+  for(auto op : m_operands)
+  {
+    cmdLine += " " +  op;
+  }
+  return cmdLine;
+}
+
+/*
     if (op.compare("chprompt") == 0)
     {
+      if(m_type ==  CommandType::BuiltIn)
+      {
+
+      }
     }
     else if (op.compare("showpid") == 0)
     {
+
     }
     else if (op.compare("pwd") == 0)
     {
@@ -170,74 +276,18 @@ public:
     }
     else
     {
-    }
-  }
-
-  Command *build()
-  {
-
-    return nullptr;
-  }
-
-private:
-  CommandBuilder &addBackground();
-};
-
-class CommandParser
-{
-
-public:
-  CommandParser(){};
-  ~CommandParser(){};
-  Command *parse(const std::string &cmd_line)
-  {
-    std::stringstream ss(cmd_line);
-    CommandBuilder cb;
-    bool isBackground = _isBackgroundCommand(cmd_line.c_str());
-
-    for (std::string tmp; ss >> tmp;)
-    {
-    }
-  }
-
-  CommandType getType(const std::string &cmd_line) const
-  {
-    std::stringstream ss(cmd_line);
-    for (std::string tmp; ss >> tmp;)
-    {
-      if (tmp == ">")
-      {
-        return CommandType::IO_Override;
-      }
-      else if (tmp == ">>")
-      {
-        return CommandType::IO_Append;
-      }
-      else if (tmp == "|")
-      {
-        return CommandType::Pipe;
-      }
-      else if (tmp == "|&")
-      {
-        return CommandType::Pipe_err;
-      }
-      else
-    }
-  }
-};
-
+    }*/
 // ? BuiltInCommand
 
-BuiltInCommand::BuiltInCommand(const char *cmd_line)
-    : Command(cmd_line)
+BuiltInCommand::BuiltInCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args)
+    : Command(name, operands, CommandType::BuiltIn, false), m_args(args)
 {
-  // TODO : _removeBackgroundSign(m_cmd_line);
 }
 
 // ? ExternalCommand
 
-ExternalCommand::ExternalCommand(const char *cmd_line)
-    : Command(cmd_line)
+ExternalCommand::ExternalCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args, bool isBackground)
+    : Command(name, operands, CommandType::External, isBackground), m_args(args)
 {
 }
 
@@ -247,8 +297,8 @@ void ExternalCommand::execute()
 
 // ? PipeCommand
 
-PipeCommand::PipeCommand(const char *cmd_line)
-    : Command(cmd_line)
+PipeCommand::PipeCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type)
+    : Command(name, operands, type, false), m_args1(args1), m_args2(args2)
 {
 }
 
@@ -258,8 +308,8 @@ void PipeCommand::execute()
 
 // ? RedirectionCommand
 
-RedirectionCommand::RedirectionCommand(const char *cmd_line)
-    : Command(cmd_line)
+RedirectionCommand::RedirectionCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type)
+    : Command(name, operands, type, false), m_args1(args1), m_args2(args2)
 {
 }
 
@@ -269,8 +319,8 @@ void RedirectionCommand::execute()
 
 // ? ChangePromptCommand
 
-ChangePromptCommand::ChangePromptCommand(const char *cmd_line)
-    : BuiltInCommand(cmd_line)
+ChangePromptCommand::ChangePromptCommand(std::vector<std::string> operands, std::vector<std::string> args)
+    : BuiltInCommand("chprompt", operands, args)
 {
   // TODO piazza: ask for name validity
 }
@@ -280,14 +330,14 @@ void ChangePromptCommand::execute()
   // if the command has only its name, then return back the default prompt
   //    otherwise,
   SmallShell::getInstance().setPrompt(
-      (m_operands.size() == 1) ? SmallShell::DEFAULT_PROMPT : m_operands.front());
+      (m_args.size() == 0) ? SmallShell::DEFAULT_PROMPT : m_args.front());
   // ! Not front, front is the command name, the next is the first arg
 }
 
 // ? ShowPidCommand
 
-ShowPidCommand::ShowPidCommand(const char *cmd_line)
-    : BuiltInCommand(cmd_line)
+ShowPidCommand::ShowPidCommand(std::vector<std::string> operands, std::vector<std::string> args)
+    : BuiltInCommand("showpid", operands, args)
 {
 }
 
@@ -299,8 +349,8 @@ void ShowPidCommand::execute()
 
 // ? GetCurrDirCommand
 
-GetCurrDirCommand::GetCurrDirCommand(const char *cmd_line)
-    : BuiltInCommand(cmd_line)
+GetCurrDirCommand::GetCurrDirCommand(std::vector<std::string> operands, std::vector<std::string> args)
+    : BuiltInCommand("pwd", operands, args)
 
 {
 }
@@ -316,10 +366,10 @@ void GetCurrDirCommand::execute()
 
 // ? ChangeDirCommand
 
-ChangeDirCommand::ChangeDirCommand(const char *cmd_line, char **plastPwd)
-    : BuiltInCommand(cmd_line)
+ChangeDirCommand::ChangeDirCommand(std::vector<std::string> operands, std::vector<std::string> args, char **plastPwd)
+    : BuiltInCommand("cd", operands, args)
 {
-  if (m_operands.size() > 2) // more than the command name and the only argument
+  if (m_args.size() > 1) // more than the only argument
   {
     std::cerr << "smash error: cd: too many arguments\n";
   }
@@ -330,7 +380,7 @@ void ChangeDirCommand::execute()
 {
   // TODO recheck the whole edge cases
 
-  if (m_operands.back().compare("-") == 0)
+  if (m_args.back().compare("-") == 0)
   {
     if (m_path_history.size() == 0)
     {
@@ -344,10 +394,10 @@ void ChangeDirCommand::execute()
       m_path_history.pop_back();
     }
   }
-  else if (m_operands.back().compare("..") == 0)
+  else if (m_args.back().compare("..") == 0)
   {
     // ! check if it the root dir
-    if (m_operands.back().compare("/") == 0)
+    if (m_args.back().compare("/") == 0)
     {
       // TODO error?
     }
@@ -364,7 +414,7 @@ void ChangeDirCommand::execute()
      */
     m_path_history.push_back(getcwd(path, COMMAND_MAX_PATH_LENGTH));
 
-    chdir(m_operands.back().c_str());
+    chdir(m_args.back().c_str());
   }
 }
 
@@ -413,7 +463,7 @@ JobsList::JobEntry *JobsList::getJobById(int jobId)
 
 void JobsList::removeJobById(int jobId)
 {
-  for (std::list<JobEntry>::iterator it = m_jobsList.begin(); it < m_jobsList.end(); ++it)
+  for (std::list<JobEntry>::iterator it = m_jobsList.begin(); it != m_jobsList.end(); ++it)
   {
     if ((*it).m_id == jobId)
     {
@@ -451,8 +501,8 @@ bool JobsList::isEmpty() const
 }
 
 // ? JobsCommand
-JobsCommand::JobsCommand(const char *cmd_line, const JobsList &jobs)
-    : BuiltInCommand(cmd_line), m_jobs(jobs)
+JobsCommand::JobsCommand(std::vector<std::string> operands, std::vector<std::string> args, const JobsList &jobs)
+    : BuiltInCommand("jobs", operands, args), m_jobs(jobs)
 {
 }
 
@@ -462,8 +512,8 @@ void JobsCommand::execute()
 }
 
 // ? ForegroundCommand
-ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList &jobs)
-    : BuiltInCommand(cmd_line), m_jobs(jobs)
+ForegroundCommand::ForegroundCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs)
+    : BuiltInCommand("fg", operands, args), m_jobs(jobs)
 {
   if (numOfArguments() > 1)
   {
@@ -477,7 +527,7 @@ ForegroundCommand::ForegroundCommand(const char *cmd_line, JobsList &jobs)
   {
     std::cerr << "smash error: fg: invalid arguments\n";
   }
-  else if (numOfArguments() == 0 && m_jobs.isEmpty())
+  if (numOfArguments() == 0 && m_jobs.isEmpty())
   {
     std::cerr << "smash error: fg: jobs list is empty\n";
   }
@@ -498,8 +548,8 @@ void ForegroundCommand::execute()
 }
 
 // ? QuitCommand
-QuitCommand::QuitCommand(const char *cmd_line, JobsList &jobs)
-    : BuiltInCommand(cmd_line), m_jobs(jobs)
+QuitCommand::QuitCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs)
+    : BuiltInCommand("quit", operands, args), m_jobs(jobs)
 {
 }
 
@@ -507,9 +557,7 @@ void QuitCommand::execute()
 {
   if (numOfArguments() > 0)
   {
-    auto firstArgument = m_operands.begin();
-    firstArgument++;
-    if (*firstArgument == "kill")
+    if (m_args.front() == "kill")
     {
       std::cout << "smash: sending SIGKILL signal to " << m_jobs.m_jobsList.size() << "jobs:\n";
       for (JobsList::JobEntry &job : m_jobs.m_jobsList)
@@ -524,12 +572,32 @@ void QuitCommand::execute()
 }
 
 // ? KillCommand
-KillCommand::KillCommand(const char *cmd_line, JobsList &jobs)
+KillCommand::KillCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs)
+  : BuiltInCommand("kill", operands, args), m_jobs(jobs)
 {
+  if(numOfArguments() > 2)
+  {
+    std::cout << "smash error: kill: invalid arguments\n";
+  }
+  try
+  {
+    m_sigNum = std::stoi(m_args.front());
+    m_jobID = std::stoi(m_args.back());
+  }
+  catch (const std::exception &e)
+  {
+    std::cerr << "smash error: kill: invalid arguments\n";
+  }
 }
 
 void KillCommand::execute()
 {
+  JobsList::JobEntry* job = m_jobs.getJobById(m_jobID);
+  if(job != nullptr)
+  {
+    m_jobs.removeJobById(m_jobID);
+    //TODO: kill the job
+  }
 }
 
 /*

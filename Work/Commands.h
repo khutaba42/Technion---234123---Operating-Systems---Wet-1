@@ -9,6 +9,16 @@
 #define COMMAND_MAX_ARGS (20)
 #define COMMAND_MAX_PATH_LENGTH (80)
 
+enum class CommandType
+{
+  BuiltIn,
+  IO_Append,
+  IO_Override,
+  Pipe,
+  Pipe_err,
+  TimeOut,
+  External
+};
 class Command
 {
 protected:
@@ -18,37 +28,54 @@ protected:
     BackGround
   };
   // *- data members
-  std::vector<std::string> m_operands; // std::vector would be better than std::list here
-  std::string m_cmd_line;
+  // std::string m_cmd_line; //!! no need for now
+  std::string m_name;
+  std::vector<std::string> m_operands;
+  CommandType m_type;
   RunType m_run_mode;
 
 public:
-  Command(const char *cmd_line);
+  Command(){};
+  Command(const std::string name, std::vector<std::string> m_operands, CommandType type, bool isBackground);
   virtual ~Command() = default;
   virtual void execute() = 0;
   // virtual void prepare();
   // virtual void cleanup();
   // *- extra methods as needed
-  RunType getRunType() const;
+  RunType getRunType() const
+  {
+    return m_run_mode;
+  }
   const std::string &getCMDline() const;
-  unsigned int numOfArguments() const;
+  virtual unsigned int numOfArguments() const
+  {
+    return m_operands.size() - 1;
+  }
 
   // ! We have to have the implementation here, because its templated.
   template <unsigned int N> // getArg<0> returns the name of the command, the others give the args in order
-  const std::string &getArg() const { return m_operands[N]; }
+  const std::string &getArg() const
+  {
+    return m_operands[N];
+  }
 };
 
 class BuiltInCommand : public Command
 {
+protected:
+  std::vector<std::string> m_args;
+
 public:
-  BuiltInCommand(const char *cmd_line);
+  BuiltInCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args);
   virtual ~BuiltInCommand() {}
 };
 
 class ExternalCommand : public Command
 {
+  std::vector<std::string> m_args;
+
 public:
-  ExternalCommand(const char *cmd_line);
+  ExternalCommand(const std::string name,std::vector<std::string> operands, std::vector<std::string> args, bool isBackground);
   virtual ~ExternalCommand() {}
   void execute() override;
 };
@@ -56,8 +83,11 @@ public:
 class PipeCommand : public Command
 {
   // *- data members
+  std::vector<std::string> m_args1;
+  std::vector<std::string> m_args2; // used incase of pipe/io for the secound section of the command
+
 public:
-  PipeCommand(const char *cmd_line);
+  PipeCommand(const std::string name,std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type);
   virtual ~PipeCommand() {}
   void execute() override;
 };
@@ -65,8 +95,10 @@ public:
 class RedirectionCommand : public Command
 {
   // *- data members
+  std::vector<std::string> m_args1;
+  std::vector<std::string> m_args2; // used incase of pipe/io for the secound section of the command
 public:
-  explicit RedirectionCommand(const char *cmd_line);
+  explicit RedirectionCommand(const std::string name,std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type);
   virtual ~RedirectionCommand() {}
   void execute() override;
   // void prepare() override;
@@ -86,7 +118,7 @@ class ChangePromptCommand : public BuiltInCommand
 {
   // *- data members
 public:
-  ChangePromptCommand(const char *cmd_line);
+  ChangePromptCommand(std::vector<std::string> operands, std::vector<std::string> args);
   virtual ~ChangePromptCommand() {}
   void execute() override;
 };
@@ -98,7 +130,7 @@ public:
 class ShowPidCommand : public BuiltInCommand
 {
 public:
-  ShowPidCommand(const char *cmd_line);
+  ShowPidCommand(std::vector<std::string> operands, std::vector<std::string> args);
   virtual ~ShowPidCommand() {}
   void execute() override;
 };
@@ -112,7 +144,7 @@ public:
 class GetCurrDirCommand : public BuiltInCommand
 {
 public:
-  GetCurrDirCommand(const char *cmd_line);
+  GetCurrDirCommand(std::vector<std::string> operands, std::vector<std::string> args);
   virtual ~GetCurrDirCommand() {}
   void execute() override;
 };
@@ -135,7 +167,7 @@ class ChangeDirCommand : public BuiltInCommand
   static std::list<std::string> m_path_history; // default c'tor will be called
 
 public:
-  ChangeDirCommand(const char *cmd_line, char **plastPwd);
+  ChangeDirCommand(std::vector<std::string> operands, std::vector<std::string> args, char **plastPwd);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
@@ -182,7 +214,7 @@ class JobsCommand : public BuiltInCommand
   JobsList m_jobs;
 
 public:
-  JobsCommand(const char *cmd_line, const JobsList &jobs);
+  JobsCommand(std::vector<std::string> operands, std::vector<std::string> args, const JobsList &jobs);
   virtual ~JobsCommand() {}
   void execute() override;
 };
@@ -195,8 +227,9 @@ class ForegroundCommand : public BuiltInCommand
   // *- data members
   JobsList m_jobs;
   int m_jobID;
+
 public:
-  ForegroundCommand(const char *cmd_line, JobsList &jobs);
+  ForegroundCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs);
   virtual ~ForegroundCommand() {}
   void execute() override;
 };
@@ -210,7 +243,7 @@ class QuitCommand : public BuiltInCommand
   JobsList m_jobs;
 
 public:
-  QuitCommand(const char *cmd_line, JobsList &jobs);
+  QuitCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs);
   virtual ~QuitCommand() {}
   void execute() override;
 };
@@ -221,7 +254,11 @@ public:
 class KillCommand : public BuiltInCommand
 {
   // *- data members
-  int public : KillCommand(const char *cmd_line, JobsList &jobs);
+  JobsList m_jobs;
+  int m_sigNum;
+  int m_jobID;
+public: 
+  KillCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs);
   virtual ~KillCommand() {}
   void execute() override;
 };
