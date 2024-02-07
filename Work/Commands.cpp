@@ -125,8 +125,14 @@ public:
     else if (m_type == CommandType::Pipe || m_type == CommandType::Pipe_err ||
              m_type == CommandType::IO_Append || m_type == CommandType::IO_Override)
     {
-      if (op == "|" || op == "|&" || op == ">" || op == ">>")
+      if (op == "|" || op == "|&")
       {
+        m_name = "pipe";
+        m_flag = 1;
+      }
+      else if (op == ">" || op == ">>")
+      {
+        m_name = "io";
         m_flag = 1;
       }
       if (m_flag == 0)
@@ -154,7 +160,57 @@ public:
 
   Command *build()
   {
+    if (m_name == "chprompt")
+    {
+      return new ChangePromptCommand(m_operands, m_args1);
+    }
+    else if (m_name == "showpid")
+    {
+      return new ShowPidCommand(m_operands, m_args1);
+    }
+    else if (m_name == "pwd")
+    {
+      return new GetCurrDirCommand(m_operands, m_args1);
+    }
+    else if (m_name == "cd")
+    {
+      return new ChangeDirCommand(m_operands, m_args1);
+    }
+    else if (m_name == "jobs")
+    {
+      return new JobsCommand(m_operands, m_args1);
+    }
+    else if (m_name == "fg")
+    {
+      return new ForegroundCommand(m_operands, m_args1);
+    }
+    else if (m_name == "quit")
+    {
+      return new QuitCommand(m_operands, m_args1);
+    }
+    else if (m_name == "kill")
+    {
+      return new KillCommand(m_operands, m_args1);
+    }
+    else if (m_name == "chmod")
+    {
+      return new ChmodCommand(m_operands, m_args1);
+    }
+    else if (m_name == "pipe")
+    {
+      return new PipeCommand(m_operands, m_args1);
+    }
+    else if (m_name == "io")
+    {
+      return new RedirectionCommand(m_operands, m_args1);
+    }
+    // else if(m_name == "timeout")
+    //{
+    //   return new TimeOutCommand(m_operands, m_args1);
+    //}
+    return nullptr;
   }
+
 
   void setBackground(bool isBackground)
   {
@@ -165,7 +221,8 @@ public:
   {
     m_type = type;
   }
-};
+}
+;
 
 class CommandParser
 {
@@ -234,49 +291,13 @@ Command::Command(const std::string name, std::vector<std::string> operands, Comm
 const std::string &Command::getCMDline() const
 {
   std::string cmdLine;
-  for(auto op : m_operands)
+  for (auto op : m_operands)
   {
-    cmdLine += " " +  op;
+    cmdLine += " " + op;
   }
   return cmdLine;
 }
 
-/*
-    if (op.compare("chprompt") == 0)
-    {
-      if(m_type ==  CommandType::BuiltIn)
-      {
-
-      }
-    }
-    else if (op.compare("showpid") == 0)
-    {
-
-    }
-    else if (op.compare("pwd") == 0)
-    {
-    }
-    else if (op.compare("cd") == 0)
-    {
-    }
-    else if (op.compare("jobs") == 0)
-    {
-    }
-    else if (op.compare("fg") == 0)
-    {
-    }
-    else if (op.compare("quit") == 0)
-    {
-    }
-    else if (op.compare("kill") == 0)
-    {
-    }
-    else if (op.compare("chmod") == 0)
-    {
-    }
-    else
-    {
-    }*/
 // ? BuiltInCommand
 
 BuiltInCommand::BuiltInCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args)
@@ -366,7 +387,7 @@ void GetCurrDirCommand::execute()
 
 // ? ChangeDirCommand
 
-ChangeDirCommand::ChangeDirCommand(std::vector<std::string> operands, std::vector<std::string> args, char **plastPwd)
+ChangeDirCommand::ChangeDirCommand(std::vector<std::string> operands, std::vector<std::string> args) //!!!! i rmoved char** plastPwd
     : BuiltInCommand("cd", operands, args)
 {
   if (m_args.size() > 1) // more than the only argument
@@ -397,7 +418,7 @@ void ChangeDirCommand::execute()
   else if (m_args.back().compare("..") == 0)
   {
     // ! check if it the root dir
-    if (m_args.back().compare("/") == 0)
+    if (m_args.back().compare("/") == 0) // !!!!!!!!! i think that this is wrong
     {
       // TODO error?
     }
@@ -573,9 +594,9 @@ void QuitCommand::execute()
 
 // ? KillCommand
 KillCommand::KillCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs)
-  : BuiltInCommand("kill", operands, args), m_jobs(jobs)
+    : BuiltInCommand("kill", operands, args), m_jobs(jobs)
 {
-  if(numOfArguments() > 2)
+  if (numOfArguments() > 2)
   {
     std::cout << "smash error: kill: invalid arguments\n";
   }
@@ -592,11 +613,11 @@ KillCommand::KillCommand(std::vector<std::string> operands, std::vector<std::str
 
 void KillCommand::execute()
 {
-  JobsList::JobEntry* job = m_jobs.getJobById(m_jobID);
-  if(job != nullptr)
+  JobsList::JobEntry *job = m_jobs.getJobById(m_jobID);
+  if (job != nullptr)
   {
     m_jobs.removeJobById(m_jobID);
-    //TODO: kill the job
+    // TODO: kill the job
   }
 }
 
@@ -609,6 +630,15 @@ void KillCommand::execute()
  */
 
 // ? ChmodCommand
+ChmodCommand::ChmodCommand(std::vector<std::string> operands, std::vector<std::string> args)
+    : BuiltInCommand("chmod", operands, args)
+{
+}
+
+void ChmodCommand::execute()
+{
+  // TODO: exec
+}
 
 /*
  * Small Shell class
@@ -628,10 +658,9 @@ SmallShell::~SmallShell()
   // TODO: add your implementation
 }
 
-//std::map<std::string, Command *> = {
-//    {"",
-//     nullptr}};
-
+// std::map<std::string, Command *> = {
+//     {"",
+//      nullptr}};
 
 /**
  * Creates and returns a pointer to Command class which matches the given command line (cmd_line)

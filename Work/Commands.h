@@ -28,7 +28,7 @@ protected:
     BackGround
   };
   // *- data members
-  // std::string m_cmd_line; //!! no need for now
+  // std::string m_cmd_line; //!! no need for now (imo)
   std::string m_name;
   std::vector<std::string> m_operands;
   CommandType m_type;
@@ -75,7 +75,7 @@ class ExternalCommand : public Command
   std::vector<std::string> m_args;
 
 public:
-  ExternalCommand(const std::string name,std::vector<std::string> operands, std::vector<std::string> args, bool isBackground);
+  ExternalCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args, bool isBackground);
   virtual ~ExternalCommand() {}
   void execute() override;
 };
@@ -87,7 +87,7 @@ class PipeCommand : public Command
   std::vector<std::string> m_args2; // used incase of pipe/io for the secound section of the command
 
 public:
-  PipeCommand(const std::string name,std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type);
+  PipeCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type);
   virtual ~PipeCommand() {}
   void execute() override;
 };
@@ -98,7 +98,7 @@ class RedirectionCommand : public Command
   std::vector<std::string> m_args1;
   std::vector<std::string> m_args2; // used incase of pipe/io for the secound section of the command
 public:
-  explicit RedirectionCommand(const std::string name,std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type);
+  explicit RedirectionCommand(const std::string name, std::vector<std::string> operands, std::vector<std::string> args1, std::vector<std::string> args2, CommandType type);
   virtual ~RedirectionCommand() {}
   void execute() override;
   // void prepare() override;
@@ -167,7 +167,7 @@ class ChangeDirCommand : public BuiltInCommand
   static std::list<std::string> m_path_history; // default c'tor will be called
 
 public:
-  ChangeDirCommand(std::vector<std::string> operands, std::vector<std::string> args, char **plastPwd);
+  ChangeDirCommand(std::vector<std::string> operands, std::vector<std::string> args);
   virtual ~ChangeDirCommand() {}
   void execute() override;
 };
@@ -257,7 +257,8 @@ class KillCommand : public BuiltInCommand
   JobsList m_jobs;
   int m_sigNum;
   int m_jobID;
-public: 
+
+public:
   KillCommand(std::vector<std::string> operands, std::vector<std::string> args, JobsList &jobs);
   virtual ~KillCommand() {}
   void execute() override;
@@ -277,7 +278,7 @@ public:
 class ChmodCommand : public BuiltInCommand
 {
 public:
-  ChmodCommand(const char *cmd_line);
+  ChmodCommand(std::vector<std::string> operands, std::vector<std::string> args);
   virtual ~ChmodCommand() {}
   void execute() override;
 };
