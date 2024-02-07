@@ -3,7 +3,7 @@
 #include <iostream>
 #include <vector>
 #include <sstream>
-// #include <sys/wait.h>
+#include <sys/wait.h>
 #include <iomanip>
 #include "Commands.h"
 
@@ -628,9 +628,11 @@ SmallShell::~SmallShell()
   // TODO: add your implementation
 }
 
-std::map<std::string, Command *> = {
-    {"",
-     nullptr}};
+//std::map<std::string, Command *> = {
+//    {"",
+//     nullptr}};
+
+
 /**
  * Creates and returns a pointer to Command class which matches the given command line (cmd_line)
  */
