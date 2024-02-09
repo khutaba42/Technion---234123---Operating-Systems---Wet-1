@@ -7,7 +7,10 @@
 #include <iomanip>
 #include "Commands.h"
 
-#include <cstring> // For strcpy
+#include <cstring>     // For strcpy
+#include <fcntl.h>     // For open and its flags  // for `open` and its MACROs
+#include <sys/types.h> // For data types          // for `open` and its MACROs
+#include <sys/stat.h>  // For mode constants      // for `open` and its MACROs
 
 #define COMMAND_MAX_PATH_LENGTH (80)
 
@@ -280,7 +283,7 @@ void RedirectionCommand::execute()
     // O_CREAT: Create file if it does not exist.
     // O_TRUNC: Truncate size to 0.
     // 0644: File permission bits (user: read+write, group: read, others: read).
-    if (open(m_file_path, O_WRONLY | O_CREAT | O_TRUNC, 0644) == -1)
+    if (open(m_file_path.c_str(), O_WRONLY | O_CREAT | O_TRUNC, 0644) == -1)
     {
       perror("smash error: open failed");
       return;
@@ -293,7 +296,7 @@ void RedirectionCommand::execute()
     // O_CREAT: Create file if it does not exist.
     // O_APPEND: Append data at the end of the file.
     // 0644: File permission bits (user: read+write, group: read, others: read).
-    if (open(m_file_path, O_WRONLY | O_CREAT | O_APPEND, 0644) == -1)
+    if (open(m_file_path.c_str(), O_WRONLY | O_CREAT | O_APPEND, 0644) == -1)
     {
       perror("smash error: open failed");
       return;

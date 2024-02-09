@@ -65,7 +65,7 @@ class ExternalCommand : public Command
 
 public:
   ExternalCommand(const char *cmd_line);
-  virtual ~ExternalCommand() {}
+  virtual ~ExternalCommand();
   void execute() override;
 
 };
@@ -90,7 +90,7 @@ public:
 
   /* methods */
   PipeCommand(const char *cmd_line);
-  virtual ~PipeCommand() {}
+  virtual ~PipeCommand();
   void execute() override;
 
 private:
@@ -128,7 +128,7 @@ class RedirectionCommand : public Command
 public:
   /* methods */
   explicit RedirectionCommand(const char *cmd_line);
-  virtual ~RedirectionCommand() {}
+  virtual ~RedirectionCommand();
   void execute() override;
   // void prepare() override; // ? what are these
   // void cleanup() override; // ? what are these
@@ -173,7 +173,7 @@ class ChangePromptCommand : public BuiltInCommand
 {
 public:
   ChangePromptCommand(const char *cmd_line);
-  virtual ~ChangePromptCommand() {}
+  virtual ~ChangePromptCommand();
   void execute() override;
 };
 
@@ -185,7 +185,7 @@ class ShowPidCommand : public BuiltInCommand
 {
 public:
   ShowPidCommand(const char *cmd_line);
-  virtual ~ShowPidCommand() {}
+  virtual ~ShowPidCommand();
   void execute() override;
 };
 
@@ -199,7 +199,7 @@ class GetCurrDirCommand : public BuiltInCommand
 {
 public:
   GetCurrDirCommand(const char *cmd_line);
-  virtual ~GetCurrDirCommand() {}
+  virtual ~GetCurrDirCommand();
   void execute() override;
 };
 
@@ -225,7 +225,7 @@ class ChangeDirCommand : public BuiltInCommand
 
 public:
   ChangeDirCommand(const char *cmd_line);
-  virtual ~ChangeDirCommand() {}
+  virtual ~ChangeDirCommand();
   void execute() override;
 };
 
@@ -241,7 +241,7 @@ class JobsCommand : public BuiltInCommand
 {
 public:
   JobsCommand(const char *cmd_line);
-  virtual ~JobsCommand() {}
+  virtual ~JobsCommand();
   void execute() override;
 };
 
@@ -252,7 +252,7 @@ class ForegroundCommand : public BuiltInCommand
 {
 public:
   ForegroundCommand(const char *cmd_line);
-  virtual ~ForegroundCommand() {}
+  virtual ~ForegroundCommand();
   void execute() override;
 };
 
@@ -263,7 +263,7 @@ class QuitCommand : public BuiltInCommand
 {
 public:
   QuitCommand(const char *cmd_line);
-  virtual ~QuitCommand() {}
+  virtual ~QuitCommand();
   void execute() override;
 };
 
@@ -278,7 +278,7 @@ class KillCommand : public BuiltInCommand
 
 public:
   KillCommand(const char *cmd_line);
-  virtual ~KillCommand() {}
+  virtual ~KillCommand();
   void execute() override;
 };
 
@@ -289,7 +289,7 @@ class ChmodCommand : public BuiltInCommand
 {
 public:
   ChmodCommand(const char *cmd_line);
-  virtual ~ChmodCommand() {}
+  virtual ~ChmodCommand();
   void execute() override;
 };
 
