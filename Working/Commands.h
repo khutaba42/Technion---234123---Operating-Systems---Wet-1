@@ -248,6 +248,7 @@ public:
  */
 class ForegroundCommand : public BuiltInCommand
 {
+  int m_id;
 public:
   ForegroundCommand(const char *cmd_line);
   virtual ~ForegroundCommand();
@@ -365,6 +366,8 @@ private:
   /* variables */
   std::string m_prompt; // originally set to DEFAULT_PROMPT
   JobsList m_background_jobs;
+
+  int m_currForegroundPID;
 
   /* methods */
   SmallShell(); // private c'tor

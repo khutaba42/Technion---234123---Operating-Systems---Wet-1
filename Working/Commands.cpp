@@ -13,6 +13,7 @@
 #include <sys/stat.h>  // For mode constants      // for `open` and its MACROs
 
 #define COMMAND_MAX_PATH_LENGTH (80)
+#define COMMAND_MAX_LENGTH (80)
 
 using namespace std;
 
@@ -157,7 +158,59 @@ ExternalCommand::~ExternalCommand()
 
 void ExternalCommand::execute()
 {
-  // TODO: wtf they want??
+
+  pid_t pid = fork();
+
+  if (pid == 0) // * son
+  {
+    if (setpgrp() == -1) // failure
+    {
+      perror("smash error: setpgrp failed");
+      return;
+    }
+
+    if (m_complexity == Complexity::Complex)
+    {
+      // trim the cmd_line and remove back ground sign (also then trim)
+      const char *command_line = _trim(Command::m_remove_background_sign(getCMDLine().c_str())).c_str();
+
+      if (execlp("/bin/bash", "/bin/bash", "-c", command_line, nullptr) != 0) // failure
+      {
+        perror("smash error: execlp failed");
+      }
+    }
+    else
+    {
+      char *args[COMMAND_MAX_ARGS + 1] = {0};
+      char trimmed_cmd_line[COMMAND_MAX_LENGTH + 1];
+
+      strcpy(trimmed_cmd_line, getCMDLine().c_str());
+
+      _removeBackgroundSign(trimmed_cmd_line);
+
+      _parseCommandLine(_trim(std::string(trimmed_cmd_line)).c_str(), args);
+
+      if (execvp(args[0], args) == -1)
+      {
+        perror("smash error: setpgrp failed");
+        return;
+      }
+    }
+  }
+  else // * parent
+  {
+    if (isBackground())
+    {
+      SmallShell::getInstance().getJobsList().addJob(this, pid);
+    }
+    else
+    {
+      if (waitpid(pid, nullptr, WUNTRACED) == -1)
+      {
+        perror("smash error: waitpid failed");
+      }
+    }
+  }
 }
 
 /*
@@ -710,11 +763,12 @@ void ChangeDirCommand::execute()
   // 0 arguments for cd will NOT be tested
 
   // get the current working directory
-  char cwd[COMMAND_MAX_PATH_LENGTH];
+  char cwd[COMMAND_MAX_PATH_LENGTH+1];
   // `getcwd()` writes the absolute pathname of the current working directory to the `path` array
-  if (getcwd(cwd, COMMAND_MAX_PATH_LENGTH) == nullptr) // success
+  if (getcwd(cwd, COMMAND_MAX_PATH_LENGTH+1) == nullptr) // failure
   {
     perror("smash error: getcwd failed");
+    return;
   }
   std::string curr_dir(cwd);
 
@@ -724,6 +778,7 @@ void ChangeDirCommand::execute()
     if (CD_PATH_HISTORY.size() == 0)
     {
       std::cerr << "smash error: cd: OLDPWD not set\n";
+      return;
     }
     else
     {
@@ -736,6 +791,7 @@ void ChangeDirCommand::execute()
       else
       {
         perror("smash error: chdir failed");
+        return;
       }
     }
   }
@@ -819,7 +875,42 @@ ForegroundCommand::ForegroundCommand(const char *cmd_line)
   {
     throw std::logic_error("ForegroundCommand::ForegroundCommand");
   }
-  // TODO: idk yet
+  auto jobslist = SmallShell::getInstance().getJobsList();
+
+  if (getArgs().size() == 0 && jobslist.size() == 0)
+  {
+    std::cerr << "smash error: fg: jobs list is empty\n";
+    throw std::logic_error("ForegroundCommand::ForegroundCommand");
+  }
+
+  try
+  {
+    if (getArgs().size() > 0)
+    {
+      m_id = std::stoi(getArgs().front());
+    }
+    else
+    {
+      m_id = jobslist.getLastJob()->getJobID();
+    }
+  }
+  catch (...)
+  {
+    std::cerr << "smash error: fg: invalid arguments\n";
+    throw std::logic_error("ForegroundCommand::ForegroundCommand");
+  }
+
+  if (getArgs().size() > 0 && jobslist.getJobById(m_id) == nullptr)
+  {
+    std::cerr << "smash error: fg: job-id " << m_id << " does not exist\n";
+    throw std::logic_error("ForegroundCommand::ForegroundCommand");
+  }
+
+  if (getArgs().size() > 1)
+  {
+    std::cerr << "smash error: fg: invalid arguments\n";
+    throw std::logic_error("ForegroundCommand::ForegroundCommand");
+  }
 }
 
 ForegroundCommand::~ForegroundCommand()
@@ -829,7 +920,19 @@ ForegroundCommand::~ForegroundCommand()
 
 void ForegroundCommand::execute()
 {
-  // TODO: idk yet
+  auto jobslist = SmallShell::getInstance().getJobsList();
+  JobsList::JobEntry *job = jobslist.getJobById(m_id);
+  if (!job)
+  {
+    return;
+  }
+
+  if (waitpid(job->getJobPid(), nullptr, WUNTRACED) != 0) // options == 0 will wait for the process to finish
+  {
+    perror("smash error: waitpid failed");
+  }
+
+  jobslist.removeJobById(m_id);
 }
 
 // * BuiltInCommand 7 (QuitCommand)
@@ -854,14 +957,7 @@ void QuitCommand::execute()
   {
     if (getArgs().front() == "kill")
     {
-      // TODO: make the commented shit inside remove allJobs
       SmallShell::getInstance().getJobsList().killAllJobs();
-      // std::cout << "smash: sending SIGKILL signal to " << jobs.size() << "jobs:\n";
-      // for (JobsList::JobEntry &job : jobs.getList())
-      //{
-      //   // getCommand() should never return nullptr
-      //   std::cout << job.getJobPid() << ": " << job.getCommand()->getCMDLine();
-      //// if the kill fails, this should be reported inside this function using perror()
     }
     // else, if other arguments other than "kill" were provided they will be ignored
   }
@@ -926,7 +1022,10 @@ void KillCommand::execute()
   JobsList &job_list = SmallShell::getInstance().getJobsList();
   if (job_list.getJobById(m_job_id) != nullptr)
   {
-    job_list.removeJobById(m_job_id);
+    if (kill(job.getJobPid(), m_signal_number) != 0) // failure
+    {
+      perror("smash error: kill failed");
+    }
   }
 }
 
@@ -979,50 +1078,88 @@ JobsList::~JobsList()
 }
 
 // assumes a valid command
-void JobsList::addJob(Command *cmd , pid_t pid)
+void JobsList::addJob(Command *cmd, pid_t pid)
 {
-  if (cmd && waitpid(pid, nullptr, WNOHANG))
+  if (cmd && waitpid(pid, nullptr, WNOHANG) != -1)
   {
     getList().push_back(JobEntry(
-      cmd,
-      pid,
-      getList().size() ? getList().size() + 1 : 1 // if there is jobs (size is true) get the last job then add 1, else give it 1 as a job id
-    ));
+        cmd,
+        pid,
+        getList().size() ? getLastJob()->getJobID() + 1 : 1 // if there is jobs (size is true) get the last job then add 1, else give it 1 as a job id
+        ));
   }
 }
 
 void JobsList::printJobsList()
 {
-  auto job_list = getList();
-  for (JobEntry& job : job_list)
+  for (auto &job : getList())
   {
-    std::cout << "[" << job.getJobID() << ": " << 
+    std::cout << "[" << job.getJobID() << "] " << job.getCommand()->getCMDLine() << "\n";
   }
-  
 }
 
 void JobsList::killAllJobs()
 {
+  std::cout << "smash: sending SIGKILL signal to " << getList().size() << " jobs:\n";
+  for (auto &job : getList())
+  {
+    std::cout << job.getJobPid() << ": " << job.getCommand()->getCMDLine() << "\n";
+    if (kill(job.getJobPid(), SIGKILL) != 0) // failure
+    {
+      perror("smash error: kill failed");
+    }
+  }
+  getList().clear();
 }
 
 void JobsList::removeFinishedJobs()
 {
+  std::list<JobEntry>::iterator it = getList().begin();
+  for (auto &job : getList())
+  {
+    if (waitpid(job.getJobPid(), nullptr, WNOHANG) > 0)
+    {
+      getList().erase(it++);
+    }
+    else
+    {
+      ++it;
+    }
+  }
 }
 
 JobsList::JobEntry *JobsList::getJobById(int jobId)
 {
+  for (auto &job : getList())
+  {
+    if (job.getJobID() == jobId)
+    {
+      return &job;
+    }
+  }
+  return nullptr;
 }
 
 void JobsList::removeJobById(int jobId)
 {
+  for (std::list<JobEntry>::iterator it = getList().begin(); it != getList().end(); ++it)
+  {
+    if ((*it).getJobID() == jobId)
+    {
+      getList().erase(it);
+      break;
+    }
+  }
 }
 
 JobsList::JobEntry *JobsList::getLastJob(int *lastJobId)
 {
+  return getList().size() ? &getList().back() : nullptr;
 }
 
 JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
 {
+  return nullptr; // TODO implement
 }
 
 /* *
@@ -1049,18 +1186,20 @@ Command *SmallShell::CreateCommand(const char *cmd_line)
 
 void SmallShell::executeCommand(const char *cmd_line)
 {
-  // TODO: Add your implementation here
-  // for example:
-  // Command* cmd = CreateCommand(cmd_line);
-  // cmd->execute();
-  // Please note that you must fork smash process for some commands (e.g., external commands....)
+  Command *cmd = CreateCommand(cmd_line);
+  if (cmd)
+  {
+
+    cmd->execute();
+  }
 }
 
 // * SmallShell Private
 
 SmallShell::SmallShell()
     : m_prompt(DEFAULT_PROMPT),
-      m_background_jobs() // default c'tor (empty list)
+      m_background_jobs(), // default c'tor (empty list)
+      m_currForegroundPID(0)
 {
 }
 
