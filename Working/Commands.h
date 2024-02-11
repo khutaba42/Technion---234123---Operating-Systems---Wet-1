@@ -3,12 +3,13 @@
 
 #include <vector>
 #include <list>
+#include <string>
 
 #define COMMAND_ARGS_MAX_LENGTH (200)
 #define COMMAND_MAX_ARGS (20)
 
 /**
- * All commands has
+ * All commands has the following atributes
  *    the command_line
  *    are background or foreground (this can be ignored during the command execution)
  * Not all commands has a name (pipe for example) so we wont have anything else here
@@ -67,7 +68,6 @@ public:
   ExternalCommand(const char *cmd_line);
   virtual ~ExternalCommand();
   void execute() override;
-
 };
 
 /*
@@ -229,9 +229,7 @@ public:
   void execute() override;
 };
 
-/* *
- * forward declare JobsList
- */
+/* forward declare JobsList */
 class JobsList;
 
 /** Command number 5:
@@ -304,10 +302,10 @@ public:
   {
   public:
     /* methods */
-    JobEntry(Command *command, pid_t job_pid, unsigned int job_id) : m_command(command), m_job_pid(job_pid), m_job_id(job_id){};
-    Command *getCommand() { return m_command; }
-    pid_t getJobPid() { return m_job_pid; }
-    unsigned int getJobID() { return m_job_id; }
+    JobEntry(Command *command, pid_t job_pid, unsigned int job_id);
+    Command *getCommand();
+    pid_t getJobPid();
+    unsigned int getJobID();
 
   private:
     /* variables */
@@ -317,12 +315,12 @@ public:
   };
 
   /* methods */
-  unsigned int size() const { return m_jobs.size(); }
-  std::list<JobEntry> &getList() { return m_jobs; }
+  unsigned int size() const;
+  std::list<JobEntry> &getList();
 
   JobsList();
   ~JobsList();
-  void addJob(Command *cmd, bool isStopped = false);
+  void addJob(Command *cmd, pid_t pid);
   void printJobsList();
   void killAllJobs();
   void removeFinishedJobs();

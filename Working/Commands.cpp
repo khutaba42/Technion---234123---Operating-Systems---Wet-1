@@ -518,9 +518,14 @@ void PipeCommand::execute()
 ChmodCommand::ChmodCommand(const char *cmd_line)
     : BuiltInCommand(cmd_line)
 {
+  if (getName() != "chmod")
+  {
+    throw std::logic_error("ChmodCommand::ChmodCommand");
+  }
+
   if (getArgs().size() != 2)
   {
-    std::cerr << "smash error: chmod: invalid arguments";
+    std::cerr << "smash error: chmod: invalid arguments\n";
     throw std::logic_error("ChmodCommand::ChmodCommand");
   }
 
@@ -530,7 +535,7 @@ ChmodCommand::ChmodCommand(const char *cmd_line)
   // if the string is NOT from 3 octal digits
   if ((modes.size() != 3) || (modes.find_first_not_of("01234567") != std::string::npos))
   {
-    std::cerr << "smash error: chmod: invalid arguments";
+    std::cerr << "smash error: chmod: invalid arguments\n";
     throw std::logic_error("ChmodCommand::ChmodCommand");
   }
 }
@@ -923,6 +928,101 @@ void KillCommand::execute()
   {
     job_list.removeJobById(m_job_id);
   }
+}
+
+/* *
+ * The JobsList class
+ */
+
+/* The JobEntry class methods */
+JobsList::JobEntry::JobEntry(Command *command, pid_t job_pid, unsigned int job_id)
+    : m_command(command),
+      m_job_pid(job_pid),
+      m_job_id(job_id)
+{
+}
+
+Command *JobsList::JobEntry::getCommand()
+{
+  return m_command;
+}
+
+pid_t JobsList::JobEntry::getJobPid()
+{
+  return m_job_pid;
+}
+
+unsigned int JobsList::JobEntry::getJobID()
+{
+  return m_job_id;
+}
+
+/* The JobList class methods */
+unsigned int JobsList::size() const
+{
+  return m_jobs.size();
+}
+
+std::list<JobsList::JobEntry> &JobsList::getList()
+{
+  return m_jobs;
+}
+
+JobsList::JobsList()
+{
+  // default
+}
+
+JobsList::~JobsList()
+{
+  // default
+}
+
+// assumes a valid command
+void JobsList::addJob(Command *cmd , pid_t pid)
+{
+  if (cmd && waitpid(pid, nullptr, WNOHANG))
+  {
+    getList().push_back(JobEntry(
+      cmd,
+      pid,
+      getList().size() ? getList().size() + 1 : 1 // if there is jobs (size is true) get the last job then add 1, else give it 1 as a job id
+    ));
+  }
+}
+
+void JobsList::printJobsList()
+{
+  auto job_list = getList();
+  for (JobEntry& job : job_list)
+  {
+    std::cout << "[" << job.getJobID() << ": " << 
+  }
+  
+}
+
+void JobsList::killAllJobs()
+{
+}
+
+void JobsList::removeFinishedJobs()
+{
+}
+
+JobsList::JobEntry *JobsList::getJobById(int jobId)
+{
+}
+
+void JobsList::removeJobById(int jobId)
+{
+}
+
+JobsList::JobEntry *JobsList::getLastJob(int *lastJobId)
+{
+}
+
+JobsList::JobEntry *JobsList::getLastStoppedJob(int *jobId)
+{
 }
 
 /* *
